@@ -2,7 +2,17 @@
 
 T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, and OpenCode. If they're set up on your computer, T3 Code can control them.
+Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, and Pi. If they're set up on your computer, T3 Code can control them.
+
+## This fork
+
+This is [tickideas/t3code](https://github.com/tickideas/t3code), a fork of [pingdotgg/t3code](https://github.com/pingdotgg/t3code) that adds [Pi](https://github.com/earendil-works/pi) support:
+
+- A built-in Pi driver, so Pi runs as an ordinary provider alongside Codex and Claude.
+- [Control of native Pi sessions](./docs/user/native-pi.md) stored under `~/.pi/agent/sessions`, plus an optional [bridge for a Pi TUI running in your own terminal](./docs/user/pi-tui-bridge.md).
+- Pi's skills in the composer's `$` picker.
+
+The published packages below are upstream's builds and do not include any of this. To run the fork, [build it from source](#running-from-source).
 
 ## "Wait, what are you selling me?"
 
@@ -20,6 +30,7 @@ We wanted something performant, remote-ready, and truly open. If we ever go the 
 > - Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
 > - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
 > - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
+> - Pi: install [Pi](https://github.com/earendil-works/pi) so that `pi` is on your `PATH`, then run `pi auth` to check provider credentials
 
 ### Try it out (install-free)
 
@@ -59,7 +70,9 @@ yay -S t3code-bin
 
 We are very very early in this project. Expect bugs.
 
-We are (mostly) not accepting contributions yet. Small fixes may be considered. Big features will not be.
+Upstream is (mostly) not accepting contributions yet. Pi-specific changes belong here; anything that
+is not about Pi is better sent to [pingdotgg/t3code](https://github.com/pingdotgg/t3code) so this
+fork stays easy to rebase.
 
 ## Documentation
 
@@ -72,11 +85,12 @@ Full docs live in [docs/](./docs). There's no docs site yet.
 - [Keeping app and server in sync](./docs/user/updating.md)
 - [Source control integrations](./docs/user/source-control.md)
 - Multiple accounts: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
+- Pi: [native sessions](./docs/user/native-pi.md) · [controlling a Pi TUI](./docs/user/pi-tui-bridge.md)
 - Linux: [run T3 Code as a background service](./docs/user/background-service.md)
 
 Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
 
-## If you REALLY want to contribute still.... read this first
+## Running from source
 
 ### Install `vp`
 
@@ -100,6 +114,12 @@ Checkout their getting started guide for more information: https://viteplus.dev/
 
 ```bash
 vp i
+```
+
+### Start the server and web app
+
+```bash
+vp run dev
 ```
 
 Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening an issue or PR.

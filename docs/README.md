@@ -10,6 +10,7 @@
 - [Source control integrations](./user/source-control.md)
 - [Background service (Linux)](./user/background-service.md)
 - Providers: [Codex](./user/providers-codex.md) · [Claude](./user/providers-claude.md)
+- Pi: [native sessions](./user/native-pi.md) · [controlling a Pi TUI](./user/pi-tui-bridge.md)
 
 Mobile app: [apps/mobile/README.md](../apps/mobile/README.md)
 
@@ -31,6 +32,7 @@ policy in [CONTRIBUTING.md](../CONTRIBUTING.md); agent rules in [AGENTS.md](../A
 - [Resource telemetry](./internals/resource-telemetry.md)
 - [Environment auth](./internals/environment-auth.md)
 - [T3 Connect](./internals/t3-connect.md)
+- [Native Pi supervisor](./architecture/native-pi-supervisor.md)
 - [CI gates](./internals/ci.md)
 
 ### Runbooks
