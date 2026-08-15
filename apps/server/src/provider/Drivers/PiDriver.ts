@@ -51,6 +51,8 @@ export const PiDriver: ProviderDriver<PiSettings, PiDriverEnv> = {
       const serverConfig = yield* ServerConfig;
       const serverSettings = yield* ServerSettingsService;
       const supervisor = makeSupervisorClient();
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
       const processEnv = mergeProviderInstanceEnvironment(environment);
       const effectiveConfig = { ...config, enabled } satisfies PiSettings;
@@ -97,8 +99,15 @@ export const PiDriver: ProviderDriver<PiSettings, PiDriverEnv> = {
         haveSettingsChanged: haveProviderSnapshotSettingsChanged,
         initialSnapshot: (settings) =>
           makePendingPiProvider(settings.provider).pipe(Effect.map(stamp)),
-        checkProvider: checkPiProviderStatus(effectiveConfig, processEnv).pipe(
+        checkProvider: checkPiProviderStatus(
+          effectiveConfig,
+          processEnv,
+          undefined,
+          serverConfig.cwd,
+        ).pipe(
           Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+          Effect.provideService(FileSystem.FileSystem, fileSystem),
+          Effect.provideService(Path.Path, path),
           Effect.map(stamp),
         ),
       }).pipe(
