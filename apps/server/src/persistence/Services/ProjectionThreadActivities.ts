@@ -41,9 +41,24 @@ export type ListProjectionThreadActivitiesInput = typeof ListProjectionThreadAct
 
 export const DeleteProjectionThreadActivitiesInput = Schema.Struct({
   threadId: ThreadId,
+  appliedSequence: NonNegativeInt,
+  updatedAt: IsoDateTime,
 });
 export type DeleteProjectionThreadActivitiesInput =
   typeof DeleteProjectionThreadActivitiesInput.Type;
+
+/**
+ * Request shape for the history bump that expires paginated activity
+ * cursors. Both writers that remove derived rows — `deleteByThreadId` and
+ * retention pruning inside `upsert` — go through it.
+ */
+export const AdvanceProjectionThreadActivityHistoryInput = Schema.Struct({
+  threadId: ThreadId,
+  appliedSequence: NonNegativeInt,
+  updatedAt: IsoDateTime,
+});
+export type AdvanceProjectionThreadActivityHistoryInput =
+  typeof AdvanceProjectionThreadActivityHistoryInput.Type;
 
 /**
  * ProjectionThreadActivityRepositoryShape - Service API for projected thread activity.
