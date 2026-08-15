@@ -4,6 +4,8 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { PiSettings } from "@t3tools/contracts";
 import { it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
+import * as Path from "effect/Path";
 import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
@@ -13,6 +15,12 @@ import { checkPiProviderStatus } from "./PiProvider.ts";
 
 const assert: typeof NodeAssert = NodeAssert;
 const settings = Schema.decodeSync(PiSettings)({ binaryPath: "fake-pi" });
+const isolatedEnvironment = Effect.fn(function* () {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-pi-provider-" });
+  return { HOME: path.join(tempDir, "home") } satisfies NodeJS.ProcessEnv;
+});
 
 const unusedClientMethods = {
   events: Stream.empty,
@@ -25,7 +33,8 @@ const unusedClientMethods = {
 
 it.effect("maps Pi RPC inventory into selectable models", () =>
   Effect.gen(function* () {
-    const snapshot = yield* checkPiProviderStatus(settings, { PI_TOKEN: "test" }, (options) =>
+    const environment = { ...(yield* isolatedEnvironment()), PI_TOKEN: "test" };
+    const snapshot = yield* checkPiProviderStatus(settings, environment, (options) =>
       Effect.succeed({
         ...unusedClientMethods,
         getState: () =>
@@ -64,6 +73,7 @@ it.effect("maps Pi RPC inventory into selectable models", () =>
     assert.equal(snapshot.models[0]?.isDefault, true);
     assert.equal(snapshot.models[0]?.capabilities?.optionDescriptors?.[0]?.id, "thinkingLevel");
     assert.equal(snapshot.models[0]?.capabilities?.optionDescriptors?.[0]?.currentValue, "medium");
+    assert.deepEqual(snapshot.skills, []);
   }).pipe(Effect.provide(NodeServices.layer)),
 );
 
@@ -74,7 +84,7 @@ it.effect("reports a binary missing error wrapped by the Pi RPC protocol as not 
       module: "ChildProcess",
       method: "spawn",
     });
-    const snapshot = yield* checkPiProviderStatus(settings, {}, () =>
+    const snapshot = yield* checkPiProviderStatus(settings, yield* isolatedEnvironment(), () =>
       Effect.fail(new PiRpcProtocolError({ detail: "failed to spawn Pi RPC", cause: missing })),
     );
 
@@ -92,14 +102,60 @@ it.effect("reports discovery failure and does not spawn while disabled", () =>
         new PiRpcCommandError({ command: "spawn", requestId: "test", detail: "inventory down" }),
       );
     };
-    const failed = yield* checkPiProviderStatus(settings, {}, factory);
+    const environment = yield* isolatedEnvironment();
+    const failed = yield* checkPiProviderStatus(settings, environment, factory);
     assert.equal(failed.status, "error");
     assert.match(failed.message ?? "", /^Pi model discovery failed:/);
+    assert.deepEqual(failed.skills, []);
 
-    const disabled = yield* checkPiProviderStatus({ ...settings, enabled: false }, {}, factory);
+    const disabled = yield* checkPiProviderStatus(
+      { ...settings, enabled: false },
+      environment,
+      factory,
+    );
     assert.equal(disabled.enabled, false);
     assert.equal(disabled.status, "disabled");
     assert.match(disabled.message ?? "", /disabled/);
     assert.equal(spawns, 1);
+    assert.deepEqual(disabled.skills, []);
+  }).pipe(Effect.provide(NodeServices.layer)),
+);
+
+it.effect("attaches discovered Pi skills to the provider snapshot", () =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-pi-provider-skills-" });
+    const home = path.join(tempDir, "home");
+    const workspace = path.join(tempDir, "workspace");
+    const skillDir = path.join(home, ".pi", "agent", "skills", "review");
+    yield* fs.makeDirectory(skillDir, { recursive: true });
+    yield* fs.writeFileString(
+      path.join(skillDir, "SKILL.md"),
+      ["---", "name: review", "description: Review the change.", "---"].join("\n"),
+    );
+
+    const snapshot = yield* checkPiProviderStatus(
+      settings,
+      { HOME: home },
+      () =>
+        Effect.succeed({
+          ...unusedClientMethods,
+          getState: () => Effect.succeed({}),
+          getAvailableModels: () => Effect.succeed({ models: [] }),
+        } satisfies PiRpcClient),
+      workspace,
+    );
+
+    assert.equal(snapshot.status, "warning");
+    assert.deepEqual(snapshot.skills, [
+      {
+        name: "review",
+        path: path.join(skillDir, "SKILL.md"),
+        enabled: true,
+        scope: "user",
+        description: "Review the change.",
+      },
+    ]);
   }).pipe(Effect.provide(NodeServices.layer)),
 );

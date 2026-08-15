@@ -2,9 +2,12 @@ import { PiSettings } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
+import * as Path from "effect/Path";
 import * as Scope from "effect/Scope";
 import { ChildProcessSpawner } from "effect/unstable/process";
 
+import { discoverPiSkills } from "../Drivers/PiSkills.ts";
 import { mapPiDiscoveredModels } from "../pi/PiModel.ts";
 import {
   makePiRpcClient,
@@ -60,9 +63,15 @@ export const checkPiProviderStatus = Effect.fn("checkPiProviderStatus")(function
   settings: PiSettings,
   environment: NodeJS.ProcessEnv = process.env,
   makeRpcClient: PiRpcClientFactory = makePiRpcClient,
-): Effect.fn.Return<ServerProviderDraft, never, ChildProcessSpawner.ChildProcessSpawner> {
+  cwd?: string,
+): Effect.fn.Return<
+  ServerProviderDraft,
+  never,
+  ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path
+> {
   const checkedAt = DateTime.formatIso(yield* DateTime.now);
   if (!settings.enabled) return yield* makePendingPiProvider(settings);
+  const skills = yield* discoverPiSkills(cwd, environment);
   const discovery = yield* Effect.scoped(
     Effect.gen(function* () {
       const client = yield* makeRpcClient({
@@ -83,6 +92,7 @@ export const checkPiProviderStatus = Effect.fn("checkPiProviderStatus")(function
       enabled: true,
       checkedAt,
       models: models(settings),
+      skills,
       probe: {
         installed: !isCommandMissingCause(error),
         version: null,
@@ -114,6 +124,7 @@ export const checkPiProviderStatus = Effect.fn("checkPiProviderStatus")(function
     enabled: true,
     checkedAt,
     models: models(settings, discovered),
+    skills,
     probe: {
       installed: true,
       version: null,
